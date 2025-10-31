@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -194,6 +195,14 @@ fun WeatherScreen() {
     fun performSearch(input: String = query) {
         val trimmed = input.trim()
         query = trimmed
+        if (trimmed.isEmpty()) {
+            suggestions = emptyList()
+            selectedSuggestion = null
+            currentWeather = null
+            errorMessage = context.getString(R.string.empty_search_error)
+            infoMessage = null
+            return
+        }
         val coordinateSuggestion = coordinateSuggestion(trimmed, context)
         if (coordinateSuggestion != null) {
             suggestions = emptyList()
@@ -384,6 +393,11 @@ private fun LocationSuggestionsList(
     suggestions: List<LocationSuggestion>,
     onSelect: (LocationSuggestion) -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val maxHeight = remember(configuration) {
+        val screenHeight = configuration.screenHeightDp.dp
+        (screenHeight * 0.45f).coerceAtLeast(260.dp)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(R.string.suggestions_header),
@@ -392,9 +406,9 @@ private fun LocationSuggestionsList(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 240.dp),
+                .heightIn(max = maxHeight),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 8.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(suggestions) { suggestion ->
                 SuggestionCard(

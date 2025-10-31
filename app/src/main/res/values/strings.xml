@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Weather App</string>
+    <string name="weather_title">오늘의 날씨</string>
+    <string name="temperature_format">%1$.1f°C</string>
+    <string name="humidity_format">습도 %1$d%%</string>
+    <string name="wind_format">바람 %1$.1f m/s</string>
+    <string name="search_hint">도시 이름 또는 위도,경도를 입력하세요 (예: Seoul 또는 37.57,126.98)</string>
+    <string name="search_button">검색</string>
+    <string name="last_updated">업데이트: %1$s</string>
+    <string name="error_loading_weather">날씨 정보를 불러오지 못했습니다. 입력을 확인하고 다시 시도하세요.</string>
+</resources>

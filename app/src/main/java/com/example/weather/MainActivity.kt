@@ -38,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -204,7 +205,8 @@ fun WeatherScreen() {
         coroutineScope.launch {
             try {
                 isSearching = true
-                val results = searchLocations(trimmed, locale)
+                val preferKoreanResults = trimmed.containsHangul() || locale.language.equals("ko", ignoreCase = true)
+                val results = searchLocations(trimmed, locale, preferKoreanResults)
                 if (results.isEmpty()) {
                     suggestions = emptyList()
                     currentWeather = null
@@ -263,7 +265,7 @@ fun WeatherScreen() {
     val currentLocationButtonLabel = stringResource(R.string.current_location_button)
     val refreshButtonLabel = stringResource(R.string.refresh_button)
 
-    Scaffold { paddingValues ->
+    Scaffold(containerColor = Color.White) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -465,9 +467,17 @@ private fun WeatherCard(weather: WeatherData) {
     }
 }
 
-private suspend fun searchLocations(query: String, locale: Locale): List<LocationSuggestion> = withContext(Dispatchers.IO) {
+private suspend fun searchLocations(
+    query: String,
+    locale: Locale,
+    preferKorean: Boolean
+): List<LocationSuggestion> = withContext(Dispatchers.IO) {
     val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
-    val language = locale.language.takeIf { it.isNotBlank() } ?: "en"
+    val language = when {
+        preferKorean -> "ko"
+        locale.language.isNotBlank() -> locale.language
+        else -> "en"
+    }
     val url = URL("https://geocoding-api.open-meteo.com/v1/search?name=$encodedQuery&count=6&language=$language&format=json")
     val connection = (url.openConnection() as HttpURLConnection).apply {
         requestMethod = "GET"
@@ -492,7 +502,9 @@ private suspend fun searchLocations(query: String, locale: Locale): List<Locatio
                     val admin1 = location.optString("admin1", "")
                     val admin2 = location.optString("admin2", "")
                     val country = location.optString("country", "")
-                    val details = listOf(admin1, admin2, country)
+                    val countryCode = location.optString("country_code", "")
+                    val translatedCountry = translateCountryName(countryCode, country)
+                    val details = listOf(admin1, admin2, translatedCountry)
                         .filter { it.isNotBlank() }
                         .joinToString(", ")
                     add(
@@ -585,6 +597,23 @@ private fun formatTimeStamp(raw: String): String {
 private fun currentTimeStamp(): String {
     val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     return formatter.format(Date())
+}
+
+private fun translateCountryName(countryCode: String?, fallback: String): String {
+    if (!countryCode.isNullOrBlank()) {
+        val normalizedCode = countryCode.uppercase(Locale.ROOT)
+        val translated = Locale("", normalizedCode).getDisplayCountry(Locale.KOREAN)
+        if (translated.isNotBlank()) {
+            return translated
+        }
+    }
+    return fallback.ifBlank { fallback }
+}
+
+private fun String.containsHangul(): Boolean {
+    return any { char ->
+        (char in '\uAC00'..'\uD7A3') || (char in '\u3130'..'\u318F')
+    }
 }
 
 private fun coordinateSuggestion(input: String, context: android.content.Context): LocationSuggestion? {
